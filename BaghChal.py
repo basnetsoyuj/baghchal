@@ -5,9 +5,9 @@ FEN -> Similar to Forsyth–Edwards Notation in chess
         {number of moves by goat}
 PGN -> Portable Game Notation like in chess
         Move to move tracking notation
-        <Move number>. G<old_position><new_position> (...B<old_position><new_position>)
-        Example : 1.G0033 B1122 2.G0044
-        [ Note:00 for unplaced piece ]
+        <Move number>. G(<old_position>)<new_position> (...B<old_position><new_position>)
+        Example : 1.G33 B1122 2.G44
+        [ Note: G<new_position> for unplaced piece ]
 '''
 import pickle
 import re
@@ -38,55 +38,6 @@ def fen_to_board(fen, board):
     return b
 
 
-def board_to_fen(board):  # Next move and move number not included
-    string = ""
-    for x in range(5):
-        counter = 0
-        for y in range(5):
-            if board[x][y]:
-                counter = 0
-                string += board[x][y].__str__()
-            else:
-                counter += 1
-                if y == 4 or board[x][y + 1] != 0:
-                    string += str(counter)
-        string += "/"
-    return string[:-1]
-
-
-def pgn_converter(pgn, board):
-    '''
-    return_items takes 0,1 or 2 as value for fen,board,both fen and board respectively
-    '''
-
-    moves = re.findall(r'[1-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', pgn)
-    no_of_goat_moves = len(moves)
-    next_turn = "B" if moves[-1][-1] == "" else "G"
-    Bagh(board, (1, 1))
-    Bagh(board, (5, 5))
-    Bagh(board, (1, 5))
-    Bagh(board, (5, 1))
-    no_of_goat_moves_current = 0
-    for move in moves:
-        no_of_goat_moves_current += 1
-        for piece in move:
-            if piece == "":
-                break
-            elif piece[1] == "x":
-                x1, y1, x2, y2 = int(piece[2]), int(piece[3]), \
-                                 int(piece[4]), int(piece[5])
-                if board[x1, y1].__class__ != Bagh: raise Exception(f"Invalid PGN. Piece at ({x1},{y1}) is not Bagh.")
-                if not ((x2, y2) in board[x1, y1].valid_bagh_moves()): Exception(
-                    f"Invalid PGN. Illegal Capture move by Bagh at {x1}{y1}")
-                board.update
-            else:
-                x1, y1, x2, y2 = int(
-                    piece[1]), int(piece[2]), int(piece[3]), \
-                                 int(piece[4])
-
-    return f"{board_to_fen(board)} {next_turn} {no_of_goat_moves}"
-
-
 class Board:
 
     def __init__(self, description=""):
@@ -96,12 +47,12 @@ class Board:
                       [0, 0, 0, 0, 0],
                       [0, 0, 0, 0, 0]]
         self.next_turn = "G"
-        self.no_of_moves_made = 0
         self.no_of_goat_moves = 0
         self.no_of_bagh_moves = 0
         self.goats_placed = 0
-        self. goats_captured = 0
-
+        self.goats_captured = 0
+        self.goat_points = set()
+        self.bagh_points = set()
 
         if description == "":
             self.fen = "B3B/5/5/5/B3B G 0"
@@ -110,7 +61,7 @@ class Board:
 
         elif description[0] == "1":
             self.pgn = description
-            self.fen = pgn_converter(self.pgn, self)
+            self.pgn_converter(self.pgn)
         else:
             self.fen = fen
             self.pgn = ""
@@ -121,10 +72,39 @@ class Board:
 
     def __setitem__(self, index, value):
         self.board[index[0] - 1][index[1] - 1] = value
-        self.fen = board_to_fen(self.board)
 
     def no_of_moves_made(self):
         return self.no_of_goat_moves + self.no_of_bagh_moves
+
+    def possible_moves(self):
+        move_list = set()
+        if self.next_turn == "G" and self.no_of_goat_moves < 20:
+            return {f'G{x1}{y1}' for x1 in range(1, 6) for y1 in range(1, 6) if
+                    (x1, y1) not in self.bagh_points.union(self.goat_points)}
+        elif self.next_turn == "G" and self.no_of_goat_moves >= 20:
+            for x1, y1 in self.goat_points:
+                move_list.update({f'G{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_moves()})
+            return move_list
+        else:
+            for x1, y1 in self.bagh_points:
+                move_list.update({f'B{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_moves()})
+                move_list.update({f'Bx{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_bagh_moves()})
+            return move_list
+
+    def pgn_converter(self, pgn):
+        move_list = re.findall(
+            r'[1-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', pgn)
+        # no_of_goat_moves = len(moves)
+        # next_turn = "B" if moves[-1][-1] == "" else "G"
+        Bagh(self, (1, 1))
+        Bagh(self, (5, 5))
+        Bagh(self, (1, 5))
+        Bagh(self, (5, 1))
+        for moves in move_list:
+            for move in moves:
+                if move == "":
+                    break
+                self.move(move)
 
     def show_board(self):
         print("-" * 26)
@@ -139,63 +119,105 @@ class Board:
 
     def validate_placement(self, move):
         x1, y1 = int(move[1]), int(move[2])
-        validate_points(x1, y1)
-        if not self.goats_placed() < 20: raise Exception(f"More than 20 goats cannot be placed")
-        if self[x1, y1]: raise Exception("The coordinate is already occupied.")
+        self.validate_points(x1, y1)
+        if not self.goats_placed < 20:
+            raise Exception(f"More than 20 goats cannot be placed")
+        if self[x1, y1]:
+            raise Exception("The coordinate is already occupied.")
         return True
 
     def validate(self, move):
         move = move.strip()
-        if len(move) not in {3, 5, 6}: raise Exception("Error ! Could not recognise the move.")
-        if move[0] != self.next_turn: raise Exception(f"Illegal Move : {move}.It is other side's turn.")
-        if move[:2] == "Bx": return validate_capture(self, move)
+        if len(move) not in {3, 5, 6}:
+            raise Exception("Error ! Could not recognise the move.")
+        if move[0] != self.next_turn:
+            raise Exception(f"Illegal Move : {move}.It is other side's turn.")
+        if move[:2] == "Bx":
+            return self.validate_capture(move)
         if len(move) == 3:
-            if move[0] == "B": Exception(f"Further Bagh cannot be placed.")
-            return validate_placement(self, move)
-        if move[:2] == "Gx": raise Exception("Goats cannot capture.")
-        x1, y1, x2, y2 = move[2:]
-        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-        validate_points(x1, y1, x2, y2)
-        validate_pp(x1, y1, move[0])
-        if not ((x2, y2) in self.board[x1, y1].valid_bagh_moves()): raise Exception(
-            f"Error . {move} is not a valid move.")
+            if self.goats_placed >= 20:
+                raise Exception(f"Futher piece cannot be placed.")
+            if move[0] == "B":
+                raise Exception(f"Further Bagh cannot be placed.")
+            return self.validate_placement(move)
+        if move[0] == "G" and len(move) == 5 and self.no_of_goat_moves < 20:
+            raise Exception("All the goats must be placed first.")
+        if move[:2] == "Gx":
+            raise Exception("Goats cannot capture.")
+        x1, y1, x2, y2 = int(move[1]), int(move[2]), int(move[3]), int(move[4])
+        self.validate_points(x1, y1, x2, y2)
+        self.validate_pp(x1, y1, move[0])
+        if not ((x2, y2) in self[x1, y1].valid_moves()):
+            raise Exception(
+                f"Error . {move} is not a valid move.")
         return True
 
     def validate_capture(self, move):
         x1, y1, x2, y2 = int(move[2]), int(move[3]), int(move[4]), int(move[5])
-        validate_points(x1, y1, x2, y2)
-        validate_pp(x1, y1, move[0])
-        if not ((x2, y2) in self.board[x1, y1].valid_bagh_moves()): raise Exception(
-            f"Error . {move} is not a valid move.")
+        self.validate_points(x1, y1, x2, y2)
+        self.validate_pp(x1, y1, move[0])
+        if not ((x2, y2) in self[x1, y1].valid_bagh_moves()):
+            raise Exception(
+                f"Error. {move} is not a valid move.")
         return True
 
     def validate_points(self, x1, y1, x2=1, y2=1):
-        if not (0 < x1 < 6 and 0 < y1 < 6 and 1 < x2 < 6 and 1 < y2 < 6): raise Exception(
-            "Invalid PGN. Coordinates not in range.")
+        if not (0 < x1 < 6 and 0 < y1 < 6 and 0 < x2 < 6 and 0 < y2 < 6):
+            raise Exception(
+                "Invalid PGN. Coordinates not in range.")
 
     def validate_pp(self, x1, y1, p):
-        if self[x1, y1].__str__() != p: raise Exception(f"Piece at ({x1},{y1}) is other than specified.")
+        if not self[x1, y1]:
+            raise Exception(f"({x1},{y1}) is not occupied.")
+        if self[x1, y1].__str__() != p:
+            raise Exception(f"Piece at ({x1},{y1}) is other than specified.")
 
-    def move(self, move):
+    def safe_move(self, move):
         if len(move) == 3:
             Goat(self, (int(move[1]), int(move[2])))
             self.no_of_goat_moves += 1
-            self.goats_placed+=1
+            self.goats_placed += 1
         else:
             if len(move) == 5:
-                x1, y1, x2, y2 = int(move[1]), int(move[2]), int(move[3]), int(move[4])
+                x1, y1, x2, y2 = int(move[1]), int(
+                    move[2]), int(move[3]), int(move[4])
             elif len(move) == 6:
-                x1, y1, x2, y2 = int(move[2]), int(move[3]), int(move[4]), int(move[5])
-                self[(x1+x2)//2,(y1+y2)//2]=0
-                self.goats_captured+=1
-            self[x1,y1]=0
-        if move[0] == "G":
-            Goat(board, (x2, y2)
-            self.no_of_goat_moves += 1
-        elif move[1] == "B":
-            Bagh(board, (x2, y2)
-            self.no_of_bagh_moves += 1
-        self.next_turn="G" if self.next_turn=="B" else "B"
+                x1, y1, x2, y2 = int(move[2]), int(
+                    move[3]), int(move[4]), int(move[5])
+                x3, y3 = (x1 + x2) // 2, (y1 + y2) // 2
+                self[x3, y3] = 0
+                self.goat_points.remove((x3, y3))
+                self.goats_captured += 1
+            self[x1, y1] = 0
+            if move[0] == "G":
+                self.goat_points.remove((x1, y1))
+                Goat(self, (x2, y2))
+                self.no_of_goat_moves += 1
+            elif move[0] == "B":
+                self.bagh_points.remove((x1, y1))
+                Bagh(self, (x2, y2))
+                self.no_of_bagh_moves += 1
+        self.next_turn = "G" if self.next_turn == "B" else "B"
+        self.fen = self.board_to_fen()
+
+    def board_to_fen(self):
+        string = ""
+        for x in range(1, 6):
+            counter = 0
+            for y in range(1, 6):
+                if self[x, y]:
+                    counter = 0
+                    string += self[x, y].__str__()
+                else:
+                    counter += 1
+                    if y == 5 or self[x, y + 1] != 0:
+                        string += str(counter)
+            string += "/"
+        return f"{string[:-1]} {self.next_turn} {self.no_of_goat_moves}"
+
+    def move(self, move):
+        if self.validate(move):
+            self.safe_move(move)
 
 
 class Piece:
@@ -221,16 +243,12 @@ class Piece:
         return {x for x in self.connected_points()
                 if not self.board[x[0], x[1]]}
 
-    def update_position(self, new_position):
-        self.board[new_position[0], new_position]
-
 
 class Bagh(Piece):
 
     def __init__(self, board, position):
-        if position == 0:
-            raise Exception("Position of Bagh must be defined")
         super(Bagh, self).__init__(board, position)
+        self.board.bagh_points.add(position)
 
     def __str__(self):
         return "B"
@@ -252,13 +270,12 @@ class Bagh(Piece):
 
 class Goat(Piece):
 
+    def __init__(self, board, position):
+        super(Goat, self).__init__(board, position)
+        self.board.goat_points.add(position)
+
     def __str__(self):
         return "G"
 
     def __repr__(self):
         return "Goat"
-
-
-board = Board()
-board.show_board()
-print(board[1, 1].valid_moves())
