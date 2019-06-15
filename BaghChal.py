@@ -87,7 +87,7 @@ class Board:
             return move_list
         else:
             for x1, y1 in self.bagh_points:
-                move_list.update({f'B{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_moves()})
+                move_list.update({f'B{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_non_special_moves()})
                 move_list.update({f'Bx{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_bagh_moves()})
             return move_list
 
@@ -267,6 +267,8 @@ class Bagh(Piece):
     def valid_moves(self):
         return super(Bagh, self).valid_moves().union(self.valid_bagh_moves())
 
+    def valid_non_special_moves(self):
+        return super(Bagh, self).valid_moves()
 
 class Goat(Piece):
 
