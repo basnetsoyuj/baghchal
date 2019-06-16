@@ -19,25 +19,6 @@ with open("data/bagh_moves.pickle", 'rb') as f:
     bagh_moves_dict = pickle.load(f)
 
 
-def fen_to_board(fen, board):
-    b = [[], [], [], [], []]
-    rows = fen.split(" ")[0].split("/")
-    for x in range(5):
-        counter = 1
-        for y in rows[x]:
-            if y == "B":
-                b[x].append(Bagh(board, (x + 1, counter)))
-                counter += 1
-            elif y == "G":
-                b[x].append(Bagh(board, (x + 1, counter)))
-                counter += 1
-            else:
-                for _ in range(int(y)):
-                    b[x].append(0)
-                    counter += 1
-    return b
-
-
 class Board:
 
     def __init__(self, description=""):
@@ -57,15 +38,11 @@ class Board:
         if description == "":
             self.fen = "B3B/5/5/5/B3B G 0"
             self.pgn = ""
-            self.board = fen_to_board(self.fen, self)
+            self.fen_to_board(self.fen)
 
-        elif description[0] == "1":
-            self.pgn = description
-            self.pgn_converter(self.pgn)
         else:
-            self.fen = fen
-            self.pgn = ""
-            self.board = fen_to_board(fen, self)
+            self.pgn = description.strip()
+            self.pgn_converter(self.pgn)
 
     def __getitem__(self, index):
         return self.board[index[0] - 1][index[1] - 1]
@@ -77,6 +54,7 @@ class Board:
         return self.no_of_goat_moves + self.no_of_bagh_moves
 
     def possible_moves(self):
+        if self.is_game_over(): return 0
         move_list = set()
         if self.next_turn == "G" and self.no_of_goat_moves < 20:
             return {f'G{x1}{y1}' for x1 in range(1, 6) for y1 in range(1, 6) if
@@ -93,7 +71,8 @@ class Board:
 
     def pgn_converter(self, pgn):
         move_list = re.findall(
-            r'[1-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', pgn)
+            r'[0-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', pgn)
+        print(move_list)
         # no_of_goat_moves = len(moves)
         # next_turn = "B" if moves[-1][-1] == "" else "G"
         Bagh(self, (1, 1))
@@ -105,6 +84,29 @@ class Board:
                 if move == "":
                     break
                 self.move(move)
+
+    def fen_to_board(self, fen):
+        rows = fen.split(" ")[0].split("/")
+        for x in range(5):
+            counter = 1
+            for y in rows[x]:
+                if y == "B":
+                    Bagh(self, (x + 1, counter))
+                    counter += 1
+                elif y == "G":
+                    Bagh(self, (x + 1, counter))
+                    counter += 1
+                else:
+                    for _ in range(int(y)):
+                        counter += 1
+
+    @property
+    def baghs_trapped(self):
+        counter = 0
+        for bagh in self.bagh_points:
+            if not self[bagh[0], bagh[1]].valid_moves():
+                counter += 1
+        return counter
 
     def show_board(self):
         print("-" * 26)
@@ -127,6 +129,7 @@ class Board:
         return True
 
     def validate(self, move):
+        if self.is_game_over(): raise Exception("The game is already over.")
         move = move.strip()
         if len(move) not in {3, 5, 6}:
             raise Exception("Error ! Could not recognise the move.")
@@ -173,6 +176,7 @@ class Board:
             raise Exception(f"Piece at ({x1},{y1}) is other than specified.")
 
     def safe_move(self, move):
+        if self.is_game_over(): raise Exception("The game is already over.")
         if len(move) == 3:
             Goat(self, (int(move[1]), int(move[2])))
             self.no_of_goat_moves += 1
@@ -197,6 +201,11 @@ class Board:
                 self.bagh_points.remove((x1, y1))
                 Bagh(self, (x2, y2))
                 self.no_of_bagh_moves += 1
+
+        pgn_update=""
+        if self.next_turn=="G":pgn_update+=f"{self.no_of_goat_moves}. "
+        pgn_update+=move
+        self.pgn+=" "+pgn_update
         self.next_turn = "G" if self.next_turn == "B" else "B"
         self.fen = self.board_to_fen()
 
@@ -218,6 +227,13 @@ class Board:
     def move(self, move):
         if self.validate(move):
             self.safe_move(move)
+            print(move)
+            self.show_board()
+
+    def is_game_over(self):
+        if self.goats_captured >= 5: return "B"
+        if self.baghs_trapped == 4: return "G"
+        return 0
 
 
 class Piece:
@@ -270,6 +286,7 @@ class Bagh(Piece):
     def valid_non_special_moves(self):
         return super(Bagh, self).valid_moves()
 
+
 class Goat(Piece):
 
     def __init__(self, board, position):
@@ -281,3 +298,8 @@ class Goat(Piece):
 
     def __repr__(self):
         return "Goat"
+
+
+#b = Board("1. G33 B1525 2. G14 B2524 3. G43 Bx2442 4. G21 B5554 5. G23 B5455 6. G33 B5554 7. G31 B5455 8. G25 B5554 9. G55 B5444 10. G12 B4241 11. G35 B4445 12. G54 B1122 13. G11 B2232 14. G34 B3242 15. G32 Bx4224 16. G33 B2413 17. G52 Bx5153 18. G51 B5344 19. G52 Bx4424 20. G34")
+#b.show_board()
+
