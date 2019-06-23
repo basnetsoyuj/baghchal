@@ -2,3 +2,5 @@
 test.py
 /__pycache__/
 /.idea/
+naive_agent.py
+a.py
