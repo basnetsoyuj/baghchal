@@ -1,8 +1,9 @@
 '''
 FEN -> Similar to Forsyth–Edwards Notation in chess
+	Starting fen => "B3B/5/5/5/B3B G 0"
         {"B3B/5/5/5/B3B"(similar to chess,"B" - Bagh, "G" - Goat)}
         {"G" or "B" represents who has next move}
-        {number of moves by goat}
+        {"0" number of moves by goat}
 PGN -> Portable Game Notation like in chess
         Move to move tracking notation
         <Move number>. G(<old_position>)<new_position> (...B<old_position><new_position>)
@@ -241,7 +242,7 @@ class Board:
                 if self[x + 1, y + 1].__class__ == Goat:
                     list_[x].append(1)
                 elif self[x + 1, y + 1].__class__ == Bagh:
-                    list_[x].append(2)
+                    list_[x].append(-1)
                 else:
                     list_[x].append(0)
         return list_
@@ -326,6 +327,3 @@ class Goat(Piece):
 
     def __repr__(self):
         return "Goat"
-
-
-b = Board("1. G33 B1525 2. G14 B2524 3. G43 Bx2442 4. G21 B5554 5. G23 B5455 6. G33 B5554 7. G31 B5455 8. G25 B5554 9. G55 B5444 10. G12 B4241 11. G35 B4445 12. G54 B1122 13. G11 B2232 14. G34 B3242 15. G32 Bx4224 16. G33 B2413 17. G52 Bx5153 18. G51 B5344 19. G52 Bx4424 20. G34 B2415 21.G3322 B1524 22.G2233 B2415 23.G3342 B1524 24.G4233")
