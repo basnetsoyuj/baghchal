@@ -1,6 +1,6 @@
 '''
 FEN -> Similar to Forsyth–Edwards Notation in chess
-	Starting fen => "B3B/5/5/5/B3B G 0"
+    Starting fen => "B3B/5/5/5/B3B G 0"
         {"B3B/5/5/5/B3B"(similar to chess,"B" - Bagh, "G" - Goat)}
         {"G" or "B" represents who has next move}
         {"0" number of moves by goat}
@@ -99,15 +99,25 @@ class Board:
         return counter
 
     def show_board(self):
-        print("-" * 26)
-        for row in self.board:
-            for x in row:
-                if x:
-                    print(f"| {x.__str__()} ", end=" ")
-                else:
-                    print("|   ", end=" ")
-            print("|")
-            print("-" * 26)
+        rep1 = ''' ¦ ＼         ¦         ／ ¦ ＼         ¦         ／ ¦    
+ ¦   ＼       ¦       ／   ¦   ＼       ¦       ／   ¦    
+ ¦     ＼     ¦     ／     ¦     ＼     ¦     ／     ¦    
+ ¦       ＼   ¦   ／       ¦       ＼   ¦   ／       ¦    
+ ¦         ＼ ¦ ／         ¦         ＼ ¦ ／         ¦    '''
+        rep2 = ''' ¦         ／ ¦ ＼         ¦          ／¦ ＼         ¦    
+ ¦       ／   ¦   ＼       ¦        ／  ¦   ＼       ¦    
+ ¦     ／     ¦     ＼     ¦      ／    ¦     ＼     ¦    
+ ¦   ／       ¦       ＼   ¦    ／      ¦       ＼   ¦    
+ ¦ ／         ¦         ＼ ¦  ／        ¦         ＼ ¦    '''
+        print(f"[{self[1,1]}]11--------[{self[1,2]}]12--------[{self[1,3]}]13--------[{self[1,4]}]14--------[{self[1,5]}]15")
+        print(rep1)
+        print(f"[{self[2,1]}]21--------[{self[2,2]}]22--------[{self[2,3]}]23--------[{self[2,4]}]24--------[{self[2,5]}]25")
+        print(rep2)
+        print(f"[{self[3,1]}]31--------[{self[3,2]}]32--------[{self[3,3]}]33--------[{self[3,4]}]34--------[{self[3,5]}]35")
+        print(rep1)
+        print(f"[{self[4,1]}]41--------[{self[4,2]}]42--------[{self[4,3]}]43--------[{self[4,4]}]44--------[{self[4,5]}]45")
+        print(rep2)
+        print(f"[{self[5,1]}]51--------[{self[5,2]}]52--------[{self[5,3]}]53--------[{self[5,4]}]54--------[{self[5,5]}]55")
 
     def validate_placement(self, move):
         x1, y1 = int(move[1]), int(move[2])
@@ -222,17 +232,22 @@ class Board:
             self.safe_move(move)
 
     def is_game_over(self):
-        if self.goats_captured >= 5 or self.baghs_trapped == 4 or self.check_draw(): return 1
+        if self.goats_captured >= 5 or self.baghs_trapped == 4 or self.check_draw():
+            return 1
         return 0
 
     def check_draw(self):
-        if max(self.fen_count.values()) >= 3: return 1
+        if max(self.fen_count.values()) >= 3:
+            return 1
         return 0
 
     def winner(self):
-        if self.goats_captured >= 5: return -1
-        if self.baghs_trapped == 4: return 1
-        if self.check_draw(): return 0
+        if self.goats_captured >= 5:
+            return -1
+        if self.baghs_trapped == 4:
+            return 1
+        if self.check_draw():
+            return 0
         raise Exception("Game is not over yet !")
 
     def board_repr(self):
