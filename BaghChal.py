@@ -13,6 +13,7 @@ PGN -> Portable Game Notation like in chess
 import pickle
 import re
 from collections import Counter
+import numpy as np
 
 with open("data/points_link.pickle", 'rb') as f:
     connected_points_dict = pickle.load(f)
@@ -20,18 +21,16 @@ with open("data/points_link.pickle", 'rb') as f:
 with open("data/bagh_moves.pickle", 'rb') as f:
     bagh_moves_dict = pickle.load(f)
 
+with open("data/action_space.pickle", 'rb') as f:
+    action_space = pickle.load(f)
+
 
 class Board:
 
     def __init__(self, description=""):
         self.reset()
-        if description == "":
-            self.pgn = ""
-            self.fen_to_board(self.fen)
-
-        else:
-            self.pgn = description.strip()
-            self.pgn_converter(self.pgn)
+        if description.strip():
+            self.pgn_converter(description.strip())
 
     def __getitem__(self, index):
         return self.board[index[0] - 1][index[1] - 1]
@@ -60,15 +59,30 @@ class Board:
                 move_list.update({f'Bx{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_bagh_moves()})
             return move_list
 
+    def possible_moves_vector(self):
+        moves_vector = np.zeros(216)
+        if self.is_game_over():
+            return moves_vector
+        if self.next_turn == "G" and self.no_of_goat_moves < 20:
+            for x1 in range(1, 6):
+                for y1 in range(1, 6):
+                    if (x1, y1) not in self.bagh_points.union(self.goat_points):
+                        moves_vector[action_space[f'{x1}{y1}']] = 1
+        elif self.next_turn == "G" and self.no_of_goat_moves >= 20:
+            for x1, y1 in self.goat_points:
+                for x2, y2 in self[x1, y1].valid_moves():
+                    moves_vector[action_space[f'{x1}{y1}{x2}{y2}']] = 1
+        else:
+            for x1, y1 in self.bagh_points:
+                for x2, y2 in self[x1, y1].valid_moves():
+                    moves_vector[action_space[f'{x1}{y1}{x2}{y2}']] = 1
+        return moves_vector
+
     def pgn_converter(self, pgn):
         move_list = re.findall(
             r'[0-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', pgn)
         # no_of_goat_moves = len(moves)
         # next_turn = "B" if moves[-1][-1] == "" else "G"
-        Bagh(self, (1, 1))
-        Bagh(self, (5, 5))
-        Bagh(self, (1, 5))
-        Bagh(self, (5, 1))
         for moves in move_list:
             for move in moves:
                 if move == "":
@@ -231,10 +245,19 @@ class Board:
         if self.validate(move):
             self.safe_move(move)
 
+    def pure_move(move):
+        if len(move) == 2:
+            self.move(f"G{move}")
+        x1, y1, x2, y2 = move
+        if abs(int(x1)-int(x2))+abs(int(y1)-int(y2)) <= 2:
+            self.move(f"{self.next_turn}{move}")
+        else:
+            self.move(f'{self.next_turn}x{move}')
+
     def is_game_over(self):
         if self.goats_captured >= 5 or self.baghs_trapped == 4 or self.check_draw():
-            return 1
-        return 0
+            return True
+        return False
 
     def check_draw(self):
         if max(self.fen_count.values()) >= 3:
@@ -243,9 +266,9 @@ class Board:
 
     def winner(self):
         if self.goats_captured >= 5:
-            return -1
+            return "B"
         if self.baghs_trapped == 4:
-            return 1
+            return "G"
         if self.check_draw():
             return 0
         raise Exception("Game is not over yet !")
@@ -278,6 +301,26 @@ class Board:
         self.fen = "B3B/5/5/5/B3B G 0"
         self.fen_history = [self.fen]
         self.fen_count = Counter([self.fen.split(" ")[0]])
+        self.pgn = ""
+        self.fen_to_board(self.fen)
+
+    def recent_player(self):
+        return "G" if self.no_of_moves_made % 2 else "B"
+
+    def undo(self, no_of_moves=1):
+        if no_of_moves > self.no_of_moves_made:
+            raise Exception(
+                "The number of moves to undo is greater than the number of moves made in the board.")
+        move_list = re.findall(
+            r'[0-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', self.pgn)
+        n = self.no_of_moves_made-no_of_moves
+        self.reset()
+        for moves in move_list:
+            for move in moves:
+                if n == 0 or move == "":
+                    return
+                self.move(move)
+                n -= 1
 
 
 class Piece:
