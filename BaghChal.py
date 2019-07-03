@@ -42,22 +42,32 @@ class Board:
     def no_of_moves_made(self):
         return self.no_of_goat_moves + self.no_of_bagh_moves
 
-    def possible_moves(self):
-        if self.is_game_over():
-            return 0
+    def _possible_goat_moves(self):
+        # the function is independent of whose turn it is to play, use at your own risk.
         move_list = set()
-        if self.next_turn == "G" and self.no_of_goat_moves < 20:
+        if self.no_of_goat_moves < 20:
             return {f'G{x1}{y1}' for x1 in range(1, 6) for y1 in range(1, 6) if
                     (x1, y1) not in self.bagh_points.union(self.goat_points)}
-        elif self.next_turn == "G" and self.no_of_goat_moves >= 20:
+        else:
             for x1, y1 in self.goat_points:
                 move_list.update({f'G{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_moves()})
             return move_list
+
+    def _possible_bagh_moves(self):
+        # the function is independent of whose turn it is to play, use at your own risk.
+        move_list = set()
+        for x1, y1 in self.bagh_points:
+            move_list.update({f'B{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_non_special_moves()})
+            move_list.update({f'Bx{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_bagh_moves()})
+        return move_list
+
+    def possible_moves(self):
+        if self.is_game_over():
+            return 0
+        if self.next_turn == "G":
+            return self._possible_goat_moves()
         else:
-            for x1, y1 in self.bagh_points:
-                move_list.update({f'B{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_non_special_moves()})
-                move_list.update({f'Bx{x1}{y1}{x2}{y2}' for x2, y2 in self[x1, y1].valid_bagh_moves()})
-            return move_list
+            return self._possible_bagh_moves()
 
     def possible_moves_vector(self):
         moves_vector = np.zeros(216)
@@ -81,8 +91,6 @@ class Board:
     def pgn_converter(self, pgn):
         move_list = re.findall(
             r'[0-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', pgn)
-        # no_of_goat_moves = len(moves)
-        # next_turn = "B" if moves[-1][-1] == "" else "G"
         for moves in move_list:
             for move in moves:
                 if move == "":
@@ -111,6 +119,10 @@ class Board:
             if not self[bagh[0], bagh[1]].valid_moves():
                 counter += 1
         return counter
+
+    @property
+    def all_goats_trapped(self):
+        return self.next_turn == "G" and not self._possible_goat_moves()
 
     def show_board(self):
         rep1 = ''' ¦ ＼         ¦         ／ ¦ ＼         ¦         ／ ¦    
@@ -224,7 +236,16 @@ class Board:
 
         self.fen = self.board_to_fen()
         self.fen_history.append(self.fen)
-        self.fen_count.update([self.fen.split(" ")[0]])
+        if self.no_of_goat_moves >= 20:
+            self.fen_count.update([self.fen.split(" ")[0]])
+
+        if self.is_game_over():
+            if self.winner() == "B":
+                self.pgn += "# 0-1"
+            elif self.winner() == "G":
+                self.pgn += "# 1-0"
+            else:
+                self.pgn += "# 1/2-1/2"
 
     def board_to_fen(self):
         string = ""
@@ -255,7 +276,7 @@ class Board:
             self.move(f'{self.next_turn}x{move}')
 
     def is_game_over(self):
-        if self.goats_captured >= 5 or self.baghs_trapped == 4 or self.check_draw():
+        if self.goats_captured >= 5 or self.baghs_trapped == 4 or self.check_draw() or self.all_goats_trapped:
             return True
         return False
 
@@ -265,7 +286,7 @@ class Board:
         return 0
 
     def winner(self):
-        if self.goats_captured >= 5:
+        if self.goats_captured >= 5 or self.all_goats_trapped:
             return "B"
         if self.baghs_trapped == 4:
             return "G"
@@ -273,17 +294,31 @@ class Board:
             return 0
         raise Exception("Game is not over yet !")
 
-    def board_repr(self):
-        list_ = [[], [], [], [], []]
+    def fen_state(self, fen):
+        state = np.zeros((2, 5, 5))
+        rows = fen.split(" ")[0].split("/")
         for x in range(5):
-            for y in range(5):
-                if self[x + 1, y + 1].__class__ == Goat:
-                    list_[x].append(1)
-                elif self[x + 1, y + 1].__class__ == Bagh:
-                    list_[x].append(-1)
+            counter = 0
+            for y in rows[x]:
+                if y == "G":
+                    state[0, x, counter] = 1
+                    counter += 1
+                elif y == "B":
+                    state[1, x, counter] = 1
+                    counter += 1
                 else:
-                    list_[x].append(0)
-        return list_
+                    for _ in range(int(y)):
+                        counter += 1
+        return state
+
+    def board_repr(self):
+        state = np.zeros((5, 5, 5))
+        state[[0, 1]] = self.fen_state(self.fen)
+        state[2, :, :] = self.goats_captured
+        state[3, :, :] = self.baghs_trapped
+        if self.next_turn == "G":
+            state[4, :, :] = 1
+        return state
 
     def reset(self):
         self.board = [[0, 0, 0, 0, 0],
@@ -313,14 +348,25 @@ class Board:
                 "The number of moves to undo is greater than the number of moves made in the board.")
         move_list = re.findall(
             r'[0-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', self.pgn)
-        n = self.no_of_moves_made-no_of_moves
+        n = i = self.no_of_moves_made-no_of_moves
         self.reset()
         for moves in move_list:
             for move in moves:
-                if n == 0 or move == "":
+                if move == ""or n == 0:
                     return
                 self.move(move)
                 n -= 1
+
+    def lightweight_show_board(self):
+        print("-" * 26)
+        for row in self.board:
+            for x in row:
+                if x:
+                    print(f"| {x.__str__()} ", end=" ")
+                else:
+                    print("|   ", end=" ")
+            print("|")
+            print("-" * 26)
 
 
 class Piece:
