@@ -124,6 +124,27 @@ class Board:
     def all_goats_trapped(self):
         return self.next_turn == "G" and not self._possible_goat_moves()
 
+    def show_info(func):
+        def wrapper(self):
+            if self.no_of_moves_made:
+                print(f"Last move: {self.moves[-1]}")
+            print(f"Goats Placed: {self.goats_placed}, Goats Captured: {self.goats_captured}, Baghs Trapped: {self.baghs_trapped}")
+            func(self)
+            if self.is_game_over():
+                print("Game over.")
+                if self.winner():
+                    print(f"Winner : {self.winner()}")
+                else:
+                    print(f"The game is a draw.")
+                return
+            print(f"{self.next_turn} to play.")
+            print(f"Possible moves:", end="")
+            for move in self.possible_moves():
+                print(f" {move}", end="")
+            print()
+        return wrapper
+
+    @show_info
     def show_board(self):
         rep1 = ''' ¦ ＼         ¦         ／ ¦ ＼         ¦         ／ ¦    
  ¦   ＼       ¦       ／   ¦   ＼       ¦       ／   ¦    
@@ -227,6 +248,7 @@ class Board:
                 Bagh(self, (x2, y2))
                 self.no_of_bagh_moves += 1
 
+        self.moves.append(move)
         pgn_update = ""
         if self.next_turn == "G":
             pgn_update += f"{self.no_of_goat_moves}. "
@@ -337,6 +359,7 @@ class Board:
         self.fen_history = [self.fen]
         self.fen_count = Counter([self.fen.split(" ")[0]])
         self.pgn = ""
+        self.moves = list()
         self.fen_to_board(self.fen)
 
     def recent_player(self):
@@ -346,17 +369,16 @@ class Board:
         if no_of_moves > self.no_of_moves_made:
             raise Exception(
                 "The number of moves to undo is greater than the number of moves made in the board.")
-        move_list = re.findall(
-            r'[0-9]+\.\s*([G][1-5]{2,4})\s*([B][x]?[1-5]{4})?', self.pgn)
-        n = i = self.no_of_moves_made-no_of_moves
+        move_list = self.moves
+        n = self.no_of_moves_made-no_of_moves
         self.reset()
-        for moves in move_list:
-            for move in moves:
-                if move == ""or n == 0:
-                    return
-                self.move(move)
-                n -= 1
+        for move in move_list:
+            if move == ""or n == 0:
+                return move_list[-no_of_moves:]
+            self.move(move)
+            n -= 1
 
+    @show_info
     def lightweight_show_board(self):
         print("-" * 26)
         for row in self.board:
