@@ -70,7 +70,7 @@ class Board:
             return self._possible_bagh_moves()
 
     def possible_moves_vector(self):
-        moves_vector = np.zeros(216)
+        moves_vector = np.zeros(217)
         if self.is_game_over():
             return moves_vector
         if self.next_turn == "G" and self.no_of_goat_moves < 20:
@@ -128,7 +128,8 @@ class Board:
         def wrapper(self):
             if self.no_of_moves_made:
                 print(f"Last move: {self.moves[-1]}")
-            print(f"Goats Placed: {self.goats_placed}, Goats Captured: {self.goats_captured}, Baghs Trapped: {self.baghs_trapped}")
+            print(
+                f"Goats Placed: {self.goats_placed}, Goats Captured: {self.goats_captured}, Baghs Trapped: {self.baghs_trapped}")
             func(self)
             if self.is_game_over():
                 print("Game over.")
@@ -142,6 +143,7 @@ class Board:
             for move in self.possible_moves():
                 print(f" {move}", end="")
             print()
+
         return wrapper
 
     @show_info
@@ -156,15 +158,20 @@ class Board:
  ¦     ／     ¦     ＼     ¦      ／    ¦     ＼     ¦    
  ¦   ／       ¦       ＼   ¦    ／      ¦       ＼   ¦    
  ¦ ／         ¦         ＼ ¦  ／        ¦         ＼ ¦    '''
-        print(f"[{self[1,1]}]11--------[{self[1,2]}]12--------[{self[1,3]}]13--------[{self[1,4]}]14--------[{self[1,5]}]15")
+        print(
+            f"[{self[1,1]}]11--------[{self[1,2]}]12--------[{self[1,3]}]13--------[{self[1,4]}]14--------[{self[1,5]}]15")
         print(rep1)
-        print(f"[{self[2,1]}]21--------[{self[2,2]}]22--------[{self[2,3]}]23--------[{self[2,4]}]24--------[{self[2,5]}]25")
+        print(
+            f"[{self[2,1]}]21--------[{self[2,2]}]22--------[{self[2,3]}]23--------[{self[2,4]}]24--------[{self[2,5]}]25")
         print(rep2)
-        print(f"[{self[3,1]}]31--------[{self[3,2]}]32--------[{self[3,3]}]33--------[{self[3,4]}]34--------[{self[3,5]}]35")
+        print(
+            f"[{self[3,1]}]31--------[{self[3,2]}]32--------[{self[3,3]}]33--------[{self[3,4]}]34--------[{self[3,5]}]35")
         print(rep1)
-        print(f"[{self[4,1]}]41--------[{self[4,2]}]42--------[{self[4,3]}]43--------[{self[4,4]}]44--------[{self[4,5]}]45")
+        print(
+            f"[{self[4,1]}]41--------[{self[4,2]}]42--------[{self[4,3]}]43--------[{self[4,4]}]44--------[{self[4,5]}]45")
         print(rep2)
-        print(f"[{self[5,1]}]51--------[{self[5,2]}]52--------[{self[5,3]}]53--------[{self[5,4]}]54--------[{self[5,5]}]55")
+        print(
+            f"[{self[5,1]}]51--------[{self[5,2]}]52--------[{self[5,3]}]53--------[{self[5,4]}]54--------[{self[5,5]}]55")
 
     def validate_placement(self, move):
         x1, y1 = int(move[1]), int(move[2])
@@ -292,7 +299,7 @@ class Board:
         if len(move) == 2:
             self.move(f"G{move}")
         x1, y1, x2, y2 = move
-        if abs(int(x1)-int(x2))+abs(int(y1)-int(y2)) <= 2:
+        if abs(int(x1) - int(x2)) + abs(int(y1) - int(y2)) <= 2:
             self.move(f"{self.next_turn}{move}")
         else:
             self.move(f'{self.next_turn}x{move}')
@@ -370,10 +377,10 @@ class Board:
             raise Exception(
                 "The number of moves to undo is greater than the number of moves made in the board.")
         move_list = self.moves
-        n = self.no_of_moves_made-no_of_moves
+        n = self.no_of_moves_made - no_of_moves
         self.reset()
         for move in move_list:
-            if move == ""or n == 0:
+            if move == "" or n == 0:
                 return move_list[-no_of_moves:]
             self.move(move)
             n -= 1
