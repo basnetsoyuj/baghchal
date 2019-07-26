@@ -13,7 +13,17 @@ PGN -> Portable Game Notation like in chess
 import re
 from collections import Counter
 import numpy as np
-from lookup_table import bagh_moves_dict,connected_points_dict,action_space
+from lookup_table import bagh_moves_dict, connected_points_dict, action_space
+from PIL import Image
+
+
+def render_points(p): return (103*(p[1]-1), 103*(p[0]-1))  # for pillow image
+
+
+BOARD_IMG = Image.open('images/board.png')
+BAGH_SPRITE = Image.open('images/bagh.png', 'r')
+GOAT_SPRITE = Image.open('images/goat.png', 'r')
+
 
 class Board:
 
@@ -196,14 +206,14 @@ class Board:
         self.validate_points(move, x1, y1, x2, y2)
         self.validate_pp(move, x1, y1, move[0])
 
-        if move[0]=="G":
+        if move[0] == "G":
             if not ((x2, y2) in self[x1, y1].valid_moves()):
                 raise Exception(
-                f"{(self.no_of_moves_made+2)//2}.{move} is not a valid move.")
-        elif move[0]=="B":
+                    f"{(self.no_of_moves_made+2)//2}.{move} is not a valid move.")
+        elif move[0] == "B":
             if not ((x2, y2) in self[x1, y1].valid_non_special_moves()):
                 raise Exception(
-                f"{(self.no_of_moves_made+2)//2}.{move} is not a valid move.")
+                    f"{(self.no_of_moves_made+2)//2}.{move} is not a valid move.")
         return True
 
     def validate_capture(self, move):
@@ -291,7 +301,7 @@ class Board:
         if self.validate(move):
             self.safe_move(move)
 
-    def pure_move(self,move):
+    def pure_move(self, move):
         if len(move) == 2:
             self.move(f"G{move}")
         else:
@@ -393,6 +403,15 @@ class Board:
                     print("|   ", end=" ")
             print("|")
             print("-" * 26)
+
+    def render(self):
+        img = Image.new("RGBA", (480, 480), (255, 255, 255, 0))
+        img.paste(BOARD_IMG, (0, 0))
+        for point in self.goat_points:
+            img.paste(GOAT_SPRITE, render_points(point), mask=GOAT_SPRITE)
+        for point in self.bagh_points:
+            img.paste(BAGH_SPRITE, render_points(point), mask=BAGH_SPRITE)
+        img.show()
 
 
 class Piece:
