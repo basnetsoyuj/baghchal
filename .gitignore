@@ -1,6 +1,3 @@
 /venv/
-test.py
-/__pycache__/
-/.idea/
-naive_agent.py
-a.py
+__pycache__/
+.idea/
