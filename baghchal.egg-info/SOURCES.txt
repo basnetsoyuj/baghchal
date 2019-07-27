@@ -2,8 +2,8 @@ LICENSE.txt
 MANIFEST.in
 README.md
 setup.py
-baghchal/Engine.py
 baghchal/__init__.py
+baghchal/engine.py
 baghchal/env.py
 baghchal/lookup_table.py
 baghchal.egg-info/PKG-INFO
