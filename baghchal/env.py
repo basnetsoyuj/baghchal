@@ -11,6 +11,8 @@ PGN -> Portable Game Notation like in chess
         [ Note: G<new_position> for unplaced piece ]
 '''
 import re
+import os
+import baghchal
 from collections import Counter
 import numpy as np
 from baghchal.lookup_table import bagh_moves_dict, connected_points_dict, action_space
@@ -20,9 +22,12 @@ from PIL import Image
 def render_points(p): return (103*(p[1]-1), 103*(p[0]-1))  # for pillow image
 
 
-BOARD_IMG = Image.open('baghchal/images/board.png')
-BAGH_SPRITE = Image.open('baghchal/images/bagh.png', 'r')
-GOAT_SPRITE = Image.open('baghchal/images/goat.png', 'r')
+BASEDIR = os.path.dirname(baghchal.__file__)
+os.chdir(BASEDIR)
+
+BOARD_IMG = Image.open('images/board.png', 'r')
+BAGH_SPRITE = Image.open('images/bagh.png', 'r')
+GOAT_SPRITE = Image.open('images/goat.png', 'r')
 
 
 class Board:
